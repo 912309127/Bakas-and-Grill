@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "886834172764",
+    "project_id": "thesis-pos-system",
+    "storage_bucket": "thesis-pos-system.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:886834172764:android:97e792142fc9dd5d98e799",
+        "android_client_info": {
+          "package_name": "com.example.bakasandgrillsystem"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBYPZpynxiD1lcjLAE9tW8h1MHD4Anzp2w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

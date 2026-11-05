@@ -1,0 +1,38 @@
+name: bakasandgrillsystem
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_core: ^3.0.0
+  firebase_auth: ^5.0.0
+  cloud_firestore: ^5.0.0
+  fl_chart: ^1.2.0 # For the Sales Overview Graph
+  provider: ^6.1.1  # For State Management
+  intl: ^0.20.2
+  shared_preferences: ^2.5.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: "^0.13.1"
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/image/logo.jpg"
+  adaptive_icon_background: "#c00e22" # This matches your primary Red color
+  adaptive_icon_foreground: "assets/image/logo.jpg"
+
+flutter:
+  uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  assets:
+    - assets/image/logo.jpg
+    - assets/image/background.jpg

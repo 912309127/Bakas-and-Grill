@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bakas & Grill - Login</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* CRITICAL FIX: Changed from min-height to strict height to stop it from "jumping" on reload */
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            overflow: hidden; /* Hides twirl spillovers and stops scrollbar flashes */
+        }
+
+        /* --- DYNAMIC TWIRLING BACKGROUND --- */
+        .twirl {
+            position: fixed;
+            background: linear-gradient(135deg, #e61029, #b30c20); /* Red Gradient */
+            z-index: 0;
+            filter: drop-shadow(0 10px 20px rgba(230, 16, 41, 0.2));
+            pointer-events: none; /* Stops background from interfering with clicks */
+        }
+
+        /* Top Left Twirl */
+        .twirl-1 {
+            top: -15vw;
+            left: -15vw;
+            width: 50vw;
+            height: 50vw;
+            min-width: 300px;
+            min-height: 300px;
+            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+            animation: spin 20s linear infinite;
+        }
+
+        /* Bottom Right Twirl */
+        .twirl-2 {
+            bottom: -15vw;
+            right: -15vw;
+            width: 45vw;
+            height: 45vw;
+            min-width: 250px;
+            min-height: 250px;
+            border-radius: 50% 50% 40% 60% / 60% 40% 50% 50%;
+            animation: spin 18s linear infinite reverse;
+        }
+
+        /* Right Side Twirl */
+        .twirl-3 {
+            top: 25%;
+            right: -10vw;
+            width: 25vw;
+            height: 25vw;
+            min-width: 150px;
+            min-height: 150px;
+            border-radius: 60% 40% 50% 50% / 40% 60% 50% 60%;
+            animation: spin 15s linear infinite;
+            opacity: 0.85;
+        }
+
+        /* Left Side Twirl */
+        .twirl-4 {
+            bottom: 25%;
+            left: -10vw;
+            width: 30vw;
+            height: 30vw;
+            min-width: 200px;
+            min-height: 200px;
+            border-radius: 30% 70% 50% 50% / 50% 50% 70% 30%;
+            animation: spin 22s linear infinite reverse;
+            opacity: 0.85;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* ---------------------------------- */
+
+        /* Main Login Box */
+        .login-container {
+            position: relative;
+            z-index: 2; /* Keeps form ON TOP of the twirls */
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.85); /* Slight blur/glass effect */
+            padding: 30px 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(5px);
+            margin: 0 20px; /* Prevents touching screen edges on mobile */
+        }
+
+        .logo {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 4px solid #ffffff; 
+            object-fit: cover;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            background-color: #e61029;
+        }
+
+        .welcome-text {
+            font-size: 36px;
+            font-weight: 900;
+            color: #000;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+        }
+
+        /* Inputs */
+        form input {
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            border: 3px solid #000; 
+            font-size: 16px;
+            outline: none;
+            border-radius: 5px;
+            background: #fff;
+        }
+
+        form input::placeholder {
+            color: #a0a0a0;
+        }
+
+        /* Password Eye Container */
+        .password-wrapper {
+            position: relative;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .password-wrapper input {
+            margin-bottom: 0; 
+            padding-right: 45px; 
+        }
+
+        .eye-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s;
+        }
+
+        .eye-icon:hover {
+            opacity: 0.6;
+        }
+
+        /* --- MATH CAPTCHA STYLES --- */
+        .captcha-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 5px 0;
+        }
+
+        .captcha-box {
+            width: 55px;
+            height: 45px;
+            border: 1px solid #cbd5e1 !important; /* Overrides the thick black border */
+            border-radius: 6px !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 600;
+            color: #64748b;
+            background: #fff;
+            margin-bottom: 0 !important;
+        }
+
+        .captcha-operator {
+            font-size: 18px;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        input.captcha-input {
+            text-align: center;
+            padding: 0 !important;
+            outline: none;
+            color: #333; /* Darker text for user input */
+        }
+
+        /* Hide number arrows on the input */
+        input.captcha-input::-webkit-outer-spin-button,
+        input.captcha-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .refresh-captcha {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 5px;
+            transition: transform 0.3s ease;
+            color: #94a3b8;
+        }
+
+        .refresh-captcha:hover {
+            transform: rotate(180deg);
+            color: #64748b;
+        }
+        /* -------------------------------- */
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #e61029; 
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.3s;
+        }
+
+        .login-btn:hover {
+            background-color: #c00e22;
+            transform: translateY(-2px);
+        }
+
+        .error-msg {
+            color: red;
+            font-size: 14px;
+            margin-bottom: 10px;
+            display: none; 
+            font-weight: bold;
+        }
+
+        .about-link {
+            margin-top: 20px;
+            display: inline-block;
+            text-decoration: underline;
+            cursor: pointer;
+            color: #1c21a9;
+            font-weight: 600;
+        }
+
+        /* ABOUT MODAL */
+        .modal {
+            display: none; 
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); 
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.95)), url('background.jpg') center/cover;
+            width: 90%;
+            max-width: 400px;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 30px;
+            cursor: pointer;
+            color: #333;
+        }
+
+        .modal-logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin-bottom: 15px;
+            background-color: #e61029;
+        }
+
+        /* FLEXIBLE INSPECT/MOBILE RESPONSIVENESS */
+        @media (max-width: 400px) {
+            .login-container { padding: 20px 15px; }
+            .logo { width: 110px; height: 110px; margin-bottom: 10px; }
+            .welcome-text { font-size: 28px; margin-bottom: 15px; }
+            .captcha-box { width: 45px; height: 40px; font-size: 16px; }
+        }
+        @media (max-height: 650px) {
+            .logo { width: 100px; height: 100px; margin-bottom: 10px; }
+            .welcome-text { font-size: 24px; margin-bottom: 10px; }
+            form input { margin-bottom: 10px; padding: 10px; }
+            .captcha-container { margin-bottom: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="twirl twirl-1"></div>
+    <div class="twirl twirl-2"></div>
+    <div class="twirl twirl-3"></div>
+    <div class="twirl twirl-4"></div>
+
+    <div class="login-container">
+        <img src="logo.jpg" alt="Bakas and Grill Logo" class="logo">
+        
+        <h1 class="welcome-text">WELCOME</h1>
+        
+        <form id="login-form">
+            <input type="email" id="email" placeholder="Email" required>
+            
+            <div class="password-wrapper">
+                <input type="password" id="password" placeholder="Password" required>
+                <span class="eye-icon" id="toggle-password" title="Show/Hide Password">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                </span>
+            </div>
+
+            <div class="captcha-container">
+                <div class="captcha-box" id="math-num1"></div>
+                <span class="captcha-operator">+</span>
+                <div class="captcha-box" id="math-num2"></div>
+                <span class="captcha-operator">=</span>
+                <input type="number" id="math-answer" class="captcha-box captcha-input" required>
+                
+                <span class="refresh-captcha" id="refresh-captcha" title="Refresh Math Problem">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                </span>
+            </div>
+
+            <p id="login-error" class="error-msg"></p>
+            <button type="submit" class="login-btn">Login</button>
+        </form>
+
+        <p class="about-link" id="open-about">About Bakas & Grill</p>
+    </div>
+
+    <div id="about-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="close-about">&times;</span>
+            <img src="logo.jpg" alt="Bakas and Grill Logo" class="modal-logo">
+            <h2>About Us</h2>
+            <p style="margin-top: 15px; color: #050505; line-height: 1.5;">
+                Welcome to Bakas & Grill! Sabaw nga makatagbaw. We pride ourselves on serving the best grilled dishes and savory soups. Built with passion and dedicated to quality service.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Toggle Password Visibility Logic
+        const togglePassword = document.getElementById('toggle-password');
+        const passwordInput = document.getElementById('password');
+
+        togglePassword.addEventListener('click', function () {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            if (type === 'text') {
+                this.style.color = '#e61029'; 
+            } else {
+                this.style.color = '#333'; 
+            }
+        });
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        // IMPORTED: setPersistence, browserSessionPersistence, and signOut
+        import { getAuth, signInWithEmailAndPassword, setPersistence, browserSessionPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyADy6jWtKlCso-zG339BWGKdhKOXsj7vAs",
+            authDomain: "thesis-pos-system.firebaseapp.com",
+            projectId: "thesis-pos-system",
+            storageBucket: "thesis-pos-system.firebasestorage.app",
+            messagingSenderId: "886834172764",
+            appId: "1:886834172764:web:528a4b5c7d8dbc1298e799"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- MATH CAPTCHA LOGIC ---
+        let expectedMathAnswer = 0;
+
+        function generateMathProblem() {
+            const num1 = Math.floor(Math.random() * 99) + 1;
+            const num2 = Math.floor(Math.random() * 99) + 1;
+            expectedMathAnswer = num1 + num2;
+            
+            document.getElementById("math-num1").innerText = num1;
+            document.getElementById("math-num2").innerText = num2;
+            document.getElementById("math-answer").value = ''; 
+        }
+
+        // Call instantly so it doesn't jump
+        generateMathProblem();
+
+        document.getElementById("refresh-captcha").addEventListener("click", generateMathProblem);
+
+        // --- MODAL LOGIC ---
+        const aboutModal = document.getElementById("about-modal");
+        const openAboutBtn = document.getElementById("open-about");
+        const closeAboutBtn = document.getElementById("close-about");
+
+        openAboutBtn.addEventListener("click", () => { aboutModal.style.display = "flex"; });
+        closeAboutBtn.addEventListener("click", () => { aboutModal.style.display = "none"; });
+        window.addEventListener("click", (e) => { if (e.target === aboutModal) aboutModal.style.display = "none"; });
+
+        // --- LOGIN LOGIC ---
+        const loginForm = document.getElementById("login-form");
+        const loginError = document.getElementById("login-error");
+
+        loginForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            
+            const userMathAnswer = parseInt(document.getElementById("math-answer").value, 10);
+            
+            if (userMathAnswer !== expectedMathAnswer) {
+                loginError.style.display = "block";
+                loginError.style.color = "red";
+                loginError.innerText = "Incorrect math answer. Please try again.";
+                generateMathProblem(); 
+                return; 
+            }
+
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            
+            loginError.style.display = "block";
+            loginError.innerText = "Authenticating...";
+            loginError.style.color = "blue";
+
+            try {
+                // FIX 1: SIMULTANEOUS LOGINS
+                await setPersistence(auth, browserSessionPersistence);
+
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const userDocRef = doc(db, "users", userCredential.user.uid);
+                const userDoc = await getDoc(userDocRef);
+                
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+
+                    // FIX 2: BLOCK ARCHIVED USERS
+                    if (userData.status === "archived" || userData.isActive === false) {
+                        await signOut(auth);
+                        throw new Error("Access Denied: Your account is archived or disabled.");
+                    }
+
+                    const role = userData.role;
+                    if (role === "admin") window.location.href = "admin.html";
+                    else if (role === "kitchen") {
+                    await signOut(auth); // Logs them out immediately
+                    // 
+                    
+                    throw new Error("Access Denied: Kitchen accounts are for Android app only.");
+                }
+                else if (role === "cashier") window.location.href = "cashier.html";
+                    else throw new Error("Role not recognized in system.");
+                } else {
+                    throw new Error("No role assigned to this user.");
+                }
+            } catch (error) {
+                console.error("Login Error:", error);
+                loginError.style.color = "red";
+                loginError.innerText = error.message.includes("Access Denied") ? error.message : "Invalid email or password.";
+                generateMathProblem(); 
+            }
+        });
+    </script>
+</body>
+</html>

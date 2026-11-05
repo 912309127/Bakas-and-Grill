@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bakas & Grill - System Admin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Modern CSS Variables & Reset */
+        :root {
+            --primary: #e61029;
+            --primary-hover: #b30c20;
+            --sidebar-bg: #c00e22; /* Red Sidebar */
+            --sidebar-active: #8a0916; /* Darker Red for active item */
+            --bg: #f4f7f6;
+            --text-dark: #333;
+            --text-light: #fff;
+            --card-bg: #fff;
+            --border: #e0e0e0;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --info: #17a2b8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { display: flex; height: 100vh; background-color: var(--bg); overflow: hidden; }
+
+        /* --- AUTHENTICATION OVERLAY --- */
+        #auth-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #1a1a1a; z-index: 99999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; color: white;
+            transition: opacity 0.5s ease;
+        }
+        .spinner {
+            width: 60px; height: 60px; border: 6px solid #333; border-top: 6px solid var(--primary);
+            border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #auth-msg { font-size: 20px; font-weight: 600; letter-spacing: 1px; text-align: center; }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 260px; background: var(--sidebar-bg); color: var(--text-light);
+            display: flex; flex-direction: column; height: 100%;
+            transition: all 0.3s; z-index: 1000;
+        }
+        .logo-area {
+            padding: 20px; display: flex; align-items: center; justify-content: center; gap: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.2); font-size: 20px; font-weight: bold; color: white;
+        }
+        .logo-area img { width: 45px; height: 45px; border-radius: 50%; border: 2px solid white; object-fit: cover; }
+        .menu-items { flex: 1; overflow-y: auto; padding-top: 10px; }
+        .menu-item {
+            padding: 15px 25px; cursor: pointer; display: flex; align-items: center;
+            gap: 15px; font-size: 16px; color: rgba(255,255,255,0.85); transition: 0.3s;
+        }
+        .menu-item:hover, .menu-item.active { background: var(--sidebar-active); color: var(--text-light); border-left: 5px solid white; }
+        .menu-item i { width: 20px; text-align: center; }
+        
+        /* Logout */
+        .logout-container { padding: 20px; border-top: 1px solid rgba(255,255,255,0.2); }
+        .logout-btn {
+            width: 100%; padding: 12px; cursor: pointer; background: #1a1a1a; color: white;
+            display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: bold;
+            border-radius: 8px; border: none; transition: 0.3s;
+        }
+        .logout-btn:hover { background: #000; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+
+        /* --- MAIN CONTENT --- */
+        .main-content { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+        
+        /* Top Header */
+        .top-header {
+            background: var(--card-bg); padding: 15px 20px; display: flex; justify-content: space-between;
+            align-items: center; border-bottom: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .header-title { font-size: 22px; font-weight: bold; color: var(--text-dark); display: flex; align-items: center; gap: 15px; }
+        .mobile-toggle { display: none; font-size: 24px; cursor: pointer; color: var(--primary); }
+
+        /* Content Area */
+        .content-area { flex: 1; padding: 20px; overflow-y: auto; position: relative; }
+        .view-section { display: none; animation: fadeIn 0.4s; }
+        .view-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Dashboard Metrics */
+        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .summary-card {
+            background: var(--card-bg); padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: flex; align-items: center; gap: 20px; border-left: 5px solid var(--primary);
+        }
+        .summary-card i { font-size: 40px; color: var(--primary); opacity: 0.8; }
+        .summary-card h4 { margin: 0; font-size: 14px; color: #666; text-transform: uppercase; }
+        .summary-card h2 { margin: 5px 0 0 0; font-size: 28px; color: var(--text-dark); }
+
+        /* --- CARDS & TABLES --- */
+        .card { background: var(--card-bg); padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .table-responsive { overflow-x: auto; width: 100%; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; min-width: 700px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: #f8f9fa; font-weight: 600; color: #555; }
+        tbody tr:hover { background: #f1f1f1; }
+
+        /* --- FORMS, SEARCH & BUTTONS --- */
+        .controls-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; }
+        .search-bar { display: flex; align-items: center; background: #eee; padding: 8px 15px; border-radius: 20px; width: 100%; max-width: 300px; }
+        .search-bar input { border: none; background: transparent; outline: none; margin-left: 10px; width: 100%; }
+
+        .btn { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; color: white; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: var(--primary); }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-success { background: var(--success); }
+        .btn-warning { background: var(--warning); color: #333; }
+        .btn-danger { background: var(--danger); }
+        .btn-info { background: var(--info); }
+        .btn-dark { background: #1a1a1a; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+        .form-group { margin-bottom: 15px; position: relative; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #555; }
+        .form-control { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; outline: none; }
+        .form-row { display: flex; gap: 15px; flex-wrap: wrap; }
+        .form-row .form-group { flex: 1; min-width: 200px; }
+
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; color: white; white-space: nowrap; }
+        .bg-green { background: var(--success); }
+        .bg-yellow { background: var(--warning); color: #000; }
+        .bg-red { background: var(--danger); }
+
+        .pagination { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; align-items: center; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
+        .modal-content { background: white; padding: 25px; border-radius: 10px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; position: relative; }
+        .modal-header { font-size: 20px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+        .close-modal { cursor: pointer; font-size: 24px; color: #aaa; position: absolute; right: 20px; top: 20px; }
+
+        @media (max-width: 900px) {
+            .sidebar { position: fixed; left: -260px; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
+            .sidebar.show { left: 0; }
+            .mobile-toggle { display: block; }
+        }
+        @media (max-width: 600px) {
+            .controls-row { flex-direction: column; align-items: flex-start; }
+            .search-bar { max-width: 100%; }
+        }
+
+        @media print {
+            body { background: white; }
+            .sidebar, .top-header, .btn, .search-bar, .pagination, .modal, .controls-row select, .logout-container, form { display: none !important; }
+            .main-content, .content-area { overflow: visible; padding: 0; margin: 0; height: auto; }
+            .card { box-shadow: none; border: none; padding: 0; margin-bottom: 20px; }
+            .view-section { display: none !important; }
+            .view-section.active { display: block !important; }
+            .table-responsive { overflow: visible; }
+            table { width: 100% !important; border: 1px solid #ddd; }
+            th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; }
+            canvas { max-width: 100% !important; height: auto !important; }
+            @page { margin: 1cm; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="auth-overlay">
+        <div class="spinner"></div>
+        <div id="auth-msg">Authenticating Secure System...<br><span style="font-size: 14px; font-weight: normal; margin-top: 5px; display: block;">Verifying Admin Credentials</span></div>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+        <div class="logo-area">
+            <img src="logo.jpg" alt="Logo">
+            <span>BAKAS & GRILL</span>
+        </div>
+        <div class="menu-items">
+            <div class="menu-item active" onclick="switchTab('dashboard')"><i class="fas fa-chart-line"></i> Dashboard</div>
+            <div class="menu-item" onclick="switchTab('financials')"><i class="fas fa-wallet"></i> Financials</div>
+            <div class="menu-item" onclick="switchTab('requests')"><i class="fas fa-clipboard-list"></i> Requests</div>
+            <div class="menu-item" onclick="switchTab('inventory')"><i class="fas fa-boxes"></i> Inventory</div>
+            <div class="menu-item" onclick="switchTab('products')"><i class="fas fa-hamburger"></i> Menu / Products</div>
+            <div class="menu-item" onclick="switchTab('employees')"><i class="fas fa-users"></i> Employees</div>
+            <div class="menu-item" onclick="switchTab('add-user')"><i class="fas fa-user-plus"></i> Add User</div>
+            <div class="menu-item" onclick="switchTab('archive')"><i class="fas fa-archive"></i> Archive</div>
+        </div>
+        <div class="logout-container">
+            <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> SYSTEM LOGOUT</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-header">
+            <div class="header-title">
+                <i class="fas fa-bars mobile-toggle" onclick="toggleSidebar()"></i>
+                <span id="header-title">Home Dashboard</span>
+            </div>
+        </div>
+
+        <div class="content-area" id="content-area">
+            
+            <div id="section-dashboard" class="view-section active">
+                <div class="controls-row" style="justify-content: flex-end;">
+                    <button class="btn btn-dark" onclick="window.print()"><i class="fas fa-print"></i> Print Report</button>
+                </div>
+                
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <i class="fas fa-coins"></i>
+                        <div><h4>Daily Sales</h4><h2 id="ds-val">₱0.00</h2></div>
+                    </div>
+                    <div class="summary-card">
+                        <i class="fas fa-shopping-cart"></i>
+                        <div><h4>Daily Orders</h4><h2 id="do-val">0</h2></div>
+                    </div>
+                    <div class="summary-card">
+                        <i class="fas fa-clock"></i>
+                        <div><h4>Pending Requests</h4><h2 id="pr-val">0</h2></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="controls-row">
+                        <h3>Sales Overview Graph</h3>
+                        <select id="salesFilter" class="form-control" style="width: auto;" onchange="renderChart()">
+                            <option value="daily">Daily Sales</option>
+                            <option value="weekly">Weekly Sales</option>
+                            <option value="monthly">Monthly Sales</option>
+                            <option value="annual">Annual Sales</option>
+                        </select>
+                    </div>
+                    <div style="position: relative; height: 350px; width: 100%;">
+                        <canvas id="salesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-financials" class="view-section">
+                <div class="card controls-row">
+                    <h2>Total Revenue (All Time): <span id="totalRevenueStr" style="color: var(--primary);">₱0.00</span></h2>
+                    <button class="btn btn-dark" onclick="window.print()"><i class="fas fa-print"></i> Print Financials</button>
+                </div>
+                <div class="card">
+                    <div class="controls-row">
+                        <h3>Transaction History</h3>
+                        <div class="search-bar">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchFinancials" placeholder="Search food, date, cashier..." onkeyup="renderFinancials(this.value)">
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="financialsTable">
+                            <thead>
+                                <tr>
+                                    <th>Date Completed</th><th>Transaction ID</th><th>Cashier Name</th>
+                                    <th>Items Sold Breakdown</th><th>Payment</th><th>Total Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="pagination">
+                        <button class="btn btn-sm btn-primary" onclick="changePage('fin', -1)">Prev</button>
+                        <span id="fin-page">Page 1 of 1</span>
+                        <button class="btn btn-sm btn-primary" onclick="changePage('fin', 1)">Next</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-requests" class="view-section">
+                <div class="card">
+                    <div class="controls-row">
+                        <h3>Inventory Restock Requests</h3>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <div class="search-bar">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="searchRequests" placeholder="Search requests..." onkeyup="renderRequests(this.value)">
+                            </div>
+                            <button class="btn btn-dark" onclick="window.print()"><i class="fas fa-print"></i> Print Requests</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="requestsTable">
+                            <thead>
+                                <tr><th>Date Requested</th><th>Ingredient</th><th>Requested By</th><th>Quantity</th><th>Status</th><th>Actions</th></tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="pagination">
+                        <button class="btn btn-sm btn-primary" onclick="changePage('req', -1)">Prev</button>
+                        <span id="req-page">Page 1 of 1</span>
+                        <button class="btn btn-sm btn-primary" onclick="changePage('req', 1)">Next</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-inventory" class="view-section">
+                <div class="card">
+                    <h3>Add New Ingredient</h3>
+                    <form id="addIngredientForm" class="form-row">
+                        <div class="form-group"><input type="text" id="ingName" class="form-control" placeholder="Item Name (e.g., Soy Sauce)" required></div>
+                        <div class="form-group">
+                            <select id="ingCat" class="form-control" required>
+                                <option value="">Select Category</option><option value="Meat">Meat</option><option value="Crops">Crops</option>
+                                <option value="Seasonings">Seasonings</option><option value="Spices">Spices</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <select id="ingUnit" class="form-control" required>
+                                <option value="">Select Measurement</option><option value="Grams">Grams</option>
+                                <option value="Milliliter">Milliliter</option><option value="Pieces">Pieces</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><button type="submit" class="btn btn-success" style="width:100%;">Add to Inventory</button></div>
+                    </form>
+                </div>
+                <div class="card">
+                    <div class="controls-row">
+                        <h3>Inventory Stock</h3>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <select id="invCatFilter" class="form-control" style="width: 150px;" onchange="renderInventory()">
+                                <option value="All">All Categories</option><option value="Meat">Meat</option>
+                                <option value="Crops">Crops</option><option value="Seasonings">Seasonings</option><option value="Spices">Spices</option>
+                            </select>
+                            <div class="search-bar">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="searchInventory" placeholder="Search inventory..." onkeyup="renderInventory(this.value)">
+                            </div>
+                            <button class="btn btn-dark" onclick="window.print()"><i class="fas fa-print"></i> Print Inventory</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="inventoryTable">
+                            <thead><tr><th>Status</th><th>Item Name</th><th>Category</th><th>Stock Level</th><th>Unit</th><th>Actions</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-products" class="view-section">
+                <div class="card">
+                    <h3>Create New Product / Dish</h3>
+                    <form id="addProductForm">
+                        <div class="form-row">
+                            <div class="form-group"><label>Dish Name</label><input type="text" id="prodName" class="form-control" required></div>
+                            <div class="form-group"><label>Category</label>
+                                <select id="prodCat" class="form-control" required>
+                                    <option value="Dish">Dish</option><option value="Drinks">Drinks</option>
+                                    <option value="Dessert">Dessert</option><option value="Grains">Grains</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>Price (₱)</label><input type="number" id="prodPrice" class="form-control" required></div>
+                            <div class="form-group"><label>Photo URL</label><input type="url" id="prodUrl" class="form-control" required></div>
+                        </div>
+                        <div class="form-group">
+                            <label style="color: var(--primary);">Ingredients Computation Setup (Recipe)</label>
+                            <p style="font-size: 12px; color: #777; margin-bottom: 10px;">Select from Inventory. Input positive number (e.g. 100 means deduct 100g on sale).</p>
+                            <div id="recipeBuilder" style="display: flex; flex-direction: column; gap: 10px;"></div>
+                            <button type="button" class="btn btn-sm btn-info mt-2" onclick="addRecipeRow()">+ Add Ingredient Row</button>
+                        </div>
+                        <button type="submit" class="btn btn-success" style="width: 100%;">Proceed & Deploy Product</button>
+                    </form>
+                </div>
+                <div class="card">
+                    <div class="controls-row">
+                        <h3>Current Menu</h3>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <div class="search-bar">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="searchProducts" placeholder="Search menu..." onkeyup="renderProducts(this.value)">
+                            </div>
+                            <button class="btn btn-dark" onclick="window.print()"><i class="fas fa-print"></i> Print Menu</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="productsTable">
+                            <thead><tr><th>Photo</th><th>Name</th><th>Category</th><th>Price</th><th>Remaining Stock</th><th>Promo</th><th>Availability</th><th>Actions</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-employees" class="view-section">
+                <div class="card controls-row">
+                    <h3>Active Staff List</h3>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <div class="search-bar">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchEmployees" placeholder="Search employees..." onkeyup="renderEmployees(this.value)">
+                        </div>
+                        <button class="btn btn-dark" onclick="window.print()"><i class="fas fa-print"></i> Print Reports</button>
+                    </div>
+                </div>
+                <div class="card table-responsive">
+                    <table id="employeeTable">
+                        <thead>
+                            <tr><th>Employee Name</th><th>Role</th><th>Email</th><th>Contact</th><th>Age</th><th>Gender</th><th>Address</th><th>Date Added</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="section-add-user" class="view-section">
+                <div class="card">
+                    <h3>Register System Staff</h3>
+                    <p id="addUserMsg" style="margin-bottom: 15px; font-weight: bold;"></p>
+                    <form id="addUserForm">
+                        <div class="form-row">
+                            <div class="form-group"><label>Full Name</label><input type="text" id="nuName" class="form-control" placeholder="F.N, M.I, L.N" required></div>
+                            <div class="form-group"><label>Email Address</label><input type="email" id="nuEmail" class="form-control" placeholder="Must include @" required></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>Contact Number</label><input type="number" id="nuContact" class="form-control" placeholder="Numbers only (No special symbols)" required></div>
+                            <div class="form-group"><label>Age</label><input type="number" id="nuAge" class="form-control" required></div>
+                            <div class="form-group"><label>Gender</label>
+                                <select id="nuGender" class="form-control" required>
+                                    <option value="Male">Male</option><option value="Female">Female</option><option value="Others">Others</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>Home Address</label><input type="text" id="nuAddress" class="form-control" placeholder="Barangay, City/Municipality" required></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>System Role</label>
+                                <select id="nuRole" class="form-control" required>
+                                    <option value="kitchen">Kitchen Staff</option><option value="cashier">Cashier</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Password</label>
+                                <div style="position: relative;">
+                                    <input type="password" id="nuPass" class="form-control" required style="padding-right: 40px;">
+                                    <i class="fas fa-eye" id="toggleNuPass" style="position: absolute; right: 15px; top: 12px; cursor: pointer; color: #555;" onclick="togglePasswordVisibility()"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success" style="width: 100%;">Create Account</button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="section-archive" class="view-section">
+                <div class="card controls-row">
+                    <h3>Archived Accounts</h3>
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchArchive" placeholder="Search archives..." onkeyup="renderArchive(this.value)">
+                    </div>
+                </div>
+                <div class="card table-responsive">
+                    <table id="archiveTable">
+                        <thead><tr><th>Name</th><th>Role</th><th>Date Archived</th><th>Actions</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="editProductModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('editProductModal')">&times;</span>
+            <div class="modal-header">Edit Menu Item</div>
+            <form id="editProductForm">
+                <input type="hidden" id="epId">
+                <div class="form-group"><label>Name</label><input type="text" id="epName" class="form-control" required></div>
+                <div class="form-group"><label>Category</label>
+                    <select id="epCat" class="form-control" required>
+                        <option value="Dish">Dish</option><option value="Drinks">Drinks</option>
+                        <option value="Dessert">Dessert</option><option value="Grains">Grains</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Price (₱)</label><input type="number" id="epPrice" class="form-control" required></div>
+                <div class="form-group"><label>Promo Discount (%) - Put 0 if none</label><input type="number" id="epPromo" class="form-control" required></div>
+                <div class="form-group"><label>Photo URL</label><input type="url" id="epUrl" class="form-control" required></div>
+                
+                <div class="form-group">
+                    <label style="color: var(--primary);">Edit Ingredients (Recipe)</label>
+                    <p style="font-size: 12px; color: #777; margin-bottom: 10px;">Modify ingredients needed to cook this item.</p>
+                    <div id="editRecipeBuilder" style="display: flex; flex-direction: column; gap: 10px;"></div>
+                    <button type="button" class="btn btn-sm btn-info mt-2" onclick="addEditRecipeRow()">+ Add Ingredient Row</button>
+                </div>
+
+                <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 10px;">Update Product</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="editEmployeeModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('editEmployeeModal')">&times;</span>
+            <div class="modal-header">Edit Employee Details</div>
+            <form id="editEmployeeForm">
+                <input type="hidden" id="editEmpId">
+                <div class="form-group"><label>Name</label><input type="text" id="editEmpName" class="form-control"></div>
+                <div class="form-group"><label>Role</label>
+                    <select id="editEmpRole" class="form-control">
+                        <option value="kitchen">Kitchen Staff</option><option value="cashier">Cashier</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Contact Number</label><input type="number" id="editEmpContact" class="form-control"></div>
+                <div class="form-group"><label>Age</label><input type="number" id="editEmpAge" class="form-control"></div>
+                <div class="form-group"><label>Address</label><input type="text" id="editEmpAddress" class="form-control"></div>
+                <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 10px;">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFirestore, collection, doc, getDoc, updateDoc, setDoc, serverTimestamp, deleteDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyADy6jWtKlCso-zG339BWGKdhKOXsj7vAs",
+            authDomain: "thesis-pos-system.firebaseapp.com",
+            projectId: "thesis-pos-system",
+            storageBucket: "thesis-pos-system.firebasestorage.app",
+            messagingSenderId: "886834172764",
+            appId: "1:886834172764:web:528a4b5c7d8dbc1298e799"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const secondaryApp = initializeApp(firebaseConfig, "Secondary");
+        const secondaryAuth = getAuth(secondaryApp);
+
+        // GLOBAL DATA STORES
+        window.allUsers = [];
+        window.allIngredients = [];
+        window.allProducts = [];
+        window.allOrders = [];
+        window.allRequests = [];
+        window.userMap = {}; 
+
+        let currentSection = 'dashboard';
+        let pages = { fin: 1, req: 1 };
+        const ITEMS_PER_PAGE = 10;
+        let chartInstance = null;
+
+        // Smart Search Tracking
+        window.lastFinQuery = '';
+        window.lastReqQuery = '';
+
+        // --- 1. STRICT AUTHENTICATION GUARD ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    if (userDoc.exists() && userDoc.data().role === "admin") {
+                        document.getElementById('auth-overlay').style.opacity = '0';
+                        setTimeout(() => { document.getElementById('auth-overlay').style.display = 'none'; }, 500);
+                        setupRealtimeListeners(); 
+                    } else throw new Error("Not an Admin");
+                } catch (e) {
+                    await signOut(auth);
+                    window.location.href = "login.html";
+                }
+            } else window.location.href = "login.html";
+        });
+
+        // --- REAL-TIME SYNCHRONIZATION ---
+        function setupRealtimeListeners() {
+            onSnapshot(collection(db, "users"), (snap) => {
+                window.allUsers = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                window.allUsers.forEach(u => window.userMap[u.email] = u.name || "Unknown"); 
+                if(currentSection === 'employees' || currentSection === 'archive') renderCurrentTab();
+            });
+            onSnapshot(collection(db, "ingredients"), (snap) => {
+                window.allIngredients = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                if(currentSection === 'inventory' || currentSection === 'products') renderCurrentTab();
+            });
+            onSnapshot(collection(db, "menu_items"), (snap) => {
+                window.allProducts = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                if(currentSection === 'products') renderCurrentTab();
+            });
+            onSnapshot(collection(db, "orders"), (snap) => {
+                window.allOrders = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                updateDashboardMetrics();
+                if(currentSection === 'dashboard' || currentSection === 'financials') renderCurrentTab();
+            });
+            onSnapshot(collection(db, "requests"), (snap) => {
+                window.allRequests = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                updateDashboardMetrics();
+                if(currentSection === 'requests') renderCurrentTab();
+            });
+        }
+
+        function updateDashboardMetrics() {
+            const today = new Date();
+            const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+            
+            let dSales = 0; let dOrders = 0;
+            window.allOrders.forEach(o => {
+                if(o.date_completed && o.date_completed.seconds) {
+                    const ms = o.date_completed.seconds * 1000;
+                    if(ms >= startOfDay && o.status !== "Cancelled") { dSales += (o.total_amount || 0); dOrders++; }
+                }
+            });
+            
+            let pReqs = window.allRequests.filter(r => r.status === 'Pending').length;
+            
+            document.getElementById('ds-val').innerText = `₱${dSales.toLocaleString()}`;
+            document.getElementById('do-val').innerText = dOrders;
+            document.getElementById('pr-val').innerText = pReqs;
+        }
+
+        // --- UI NAVIGATION ---
+        window.switchTab = (tabId) => {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(`section-${tabId}`).classList.add('active');
+            event.currentTarget.classList.add('active');
+            currentSection = tabId;
+
+            const titles = {
+                'dashboard': 'Home Dashboard', 'financials': 'Financials', 'requests': 'Restock Requests',
+                'inventory': 'Inventory Control', 'products': 'Menu / Products', 'employees': 'Employee Directory',
+                'add-user': 'Register System User', 'archive': 'Archived Accounts'
+            };
+            document.getElementById('header-title').innerText = titles[tabId];
+            
+            document.querySelectorAll('.search-bar input').forEach(inp => inp.value = '');
+            pages.fin = 1; pages.req = 1;
+            window.lastFinQuery = ''; window.lastReqQuery = '';
+            
+            if(window.innerWidth <= 900) toggleSidebar(); 
+            renderCurrentTab();
+        };
+
+        window.toggleSidebar = () => { document.getElementById('sidebar').classList.toggle('show'); };
+
+        function renderCurrentTab() {
+            if(currentSection === 'dashboard') renderChart();
+            if(currentSection === 'financials') renderFinancials();
+            if(currentSection === 'requests') renderRequests();
+            if(currentSection === 'inventory') renderInventory();
+            if(currentSection === 'products') renderProducts();
+            if(currentSection === 'employees') renderEmployees();
+            if(currentSection === 'archive') renderArchive();
+        }
+
+        // --- DASHBOARD CHART ---
+        window.renderChart = () => {
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            const filterType = document.getElementById('salesFilter').value;
+            const sorted = [...window.allOrders].sort((a,b) => (a.date_completed?.seconds || 0) - (b.date_completed?.seconds || 0));
+            let dateMap = {}; 
+
+            sorted.forEach(o => {
+                if(o.date_completed && o.date_completed.seconds && o.status !== "Cancelled") {
+                    const dObj = new Date(o.date_completed.seconds * 1000);
+                    let dateKey = "";
+
+                    if (filterType === "daily") {
+                        dateKey = `${(dObj.getMonth()+1).toString().padStart(2,'0')}/${dObj.getDate().toString().padStart(2,'0')}/${dObj.getFullYear()}`;
+                    } else if (filterType === "weekly") {
+                        const tempDate = new Date(dObj.getTime());
+                        const day = tempDate.getDay();
+                        const diff = tempDate.getDate() - day + (day === 0 ? -6 : 1);
+                        const monday = new Date(tempDate.setDate(diff));
+                        dateKey = `Week of ${(monday.getMonth()+1).toString().padStart(2,'0')}/${monday.getDate().toString().padStart(2,'0')}/${monday.getFullYear()}`;
+                    } else if (filterType === "monthly") {
+                        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                        dateKey = `${monthNames[dObj.getMonth()]} ${dObj.getFullYear()}`;
+                    } else if (filterType === "annual") {
+                        dateKey = `${dObj.getFullYear()}`;
+                    }
+
+                    dateMap[dateKey] = (dateMap[dateKey] || 0) + (o.total_amount || 0);
+                }
+            });
+
+            let labels = Object.keys(dateMap);
+            let data = Object.values(dateMap);
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels: labels, datasets: [{ label: 'Sales Revenue (₱)', data: data, borderColor: '#e61029', backgroundColor: 'rgba(230, 16, 41, 0.1)', borderWidth: 3, fill: true, tension: 0.1, pointRadius: 5, pointBackgroundColor: '#1a1a1a' }] },
+                options: { scales: { y: { beginAtZero: true } }, plugins: { tooltip: { callbacks: { label: (ctx) => ` Sales: ₱${ctx.raw}` } } }, maintainAspectRatio: false }
+            });
+        };
+
+        // --- FULLY FIXED TRANSACTION HISTORY SEARCH (100% FLEXIBLE) ---
+        window.renderFinancials = (query = '') => {
+            query = query.toLowerCase().trim();
+            
+            // Smart Page Reset: If typing a new search, go back to page 1
+            if (window.lastFinQuery !== query) {
+                pages.fin = 1;
+                window.lastFinQuery = query;
+            }
+
+            let total = 0;
+            let sorted = [...window.allOrders].sort((a,b) => (b.date_completed?.seconds || 0) - (a.date_completed?.seconds || 0)).filter(o => o.status !== "Cancelled"); 
+            
+            sorted.forEach(o => total += (o.total_amount || 0));
+            document.getElementById('totalRevenueStr').innerText = `₱${total.toLocaleString()}`;
+
+            if(query) {
+                const searchTerms = query.split(/\s+/); // Splits by space to allow multi-word search
+                
+                sorted = sorted.filter(o => {
+                    const cName = (window.userMap[o.cashier_name] || o.cashier_name || "").toString().toLowerCase();
+                    const oId = (o.id || "").toString().toLowerCase();
+                    const oNum = (o.order_number || "").toString().toLowerCase();
+                    
+                    // Safely map all items inside the cart
+                    let itemsStr = "";
+                    if (Array.isArray(o.items_sold)) {
+                        itemsStr = o.items_sold.map(i => `${i.name || ""} ${i.qty || ""}x`).join(" ").toLowerCase();
+                    }
+                    
+                    let dStr = "";
+                    let dFull = "";
+                    if(o.date_completed && o.date_completed.seconds) {
+                        const d = new Date(o.date_completed.seconds * 1000);
+                        // Matches "03/17/26" format
+                        dStr = `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}/${d.getFullYear().toString().slice(-2)}`;
+                        // Matches "March 17, 2026" format
+                        dFull = d.toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'}).toLowerCase();
+                    }
+                    
+                    const totalStr = (o.total_amount || 0).toString();
+                    const payMeth = (o.payment_method || "cash").toString().toLowerCase();
+                    
+                    // Combine everything into one giant searchable text block
+                    const searchableText = `${cName} ${oId} ${oNum} ${itemsStr} ${dStr} ${dFull} ${totalStr} ${payMeth}`;
+                    
+                    // Must match ALL words typed in the search bar
+                    return searchTerms.every(term => searchableText.includes(term));
+                });
+            }
+
+            // Pagination bounds safety lock
+            const maxPage = Math.ceil(sorted.length / ITEMS_PER_PAGE) || 1;
+            if (pages.fin > maxPage) pages.fin = maxPage;
+            if (pages.fin < 1) pages.fin = 1;
+            
+            const tbody = document.querySelector('#financialsTable tbody');
+            tbody.innerHTML = '';
+            const start = (pages.fin - 1) * ITEMS_PER_PAGE;
+            const paginated = sorted.slice(start, start + ITEMS_PER_PAGE);
+
+            paginated.forEach(o => {
+                let dStr = 'N/A';
+                if(o.date_completed) {
+                    const d = new Date(o.date_completed.seconds * 1000);
+                    dStr = `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}/${d.getFullYear().toString().slice(-2)}`;
+                }
+                const cName = window.userMap[o.cashier_name] || o.cashier_name || 'Unknown'; 
+                const itemsStr = Array.isArray(o.items_sold) ? o.items_sold.map(i => `${i.name} (x${i.qty})`).join(', ') : 'No items';
+                
+                tbody.innerHTML += `<tr>
+                    <td>${dStr}</td><td>${o.order_number || o.id}</td><td>${cName}</td>
+                    <td>${itemsStr}</td><td>${o.payment_method || 'Cash'}</td>
+                    <td style="font-weight:bold; color:var(--primary)">₱${o.total_amount || 0}</td>
+                </tr>`;
+            });
+            document.getElementById('fin-page').innerText = `Page ${pages.fin} of ${maxPage}`;
+        };
+
+        // --- ADMIN APPROVE REQUESTS (FIXED PAGINATION BOUNDS) ---
+        window.renderRequests = (query = '') => {
+            query = query.toLowerCase().trim();
+            
+            if (window.lastReqQuery !== query) {
+                pages.req = 1;
+                window.lastReqQuery = query;
+            }
+
+            const tbody = document.querySelector('#requestsTable tbody');
+            tbody.innerHTML = '';
+            
+            let filtered = [...window.allRequests].sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+            if(query) {
+                filtered = filtered.filter(r => {
+                    const iName = (r.itemName || "").toLowerCase();
+                    const kStaff = (r.kitchen_staff || "").toLowerCase();
+                    const stat = (r.status || "").toLowerCase();
+                    let dStr = "";
+                    if(r.timestamp) {
+                        const d = new Date(r.timestamp.seconds * 1000);
+                        dStr = `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}/${d.getFullYear().toString().slice(-2)}`;
+                    }
+                    return iName.includes(query) || kStaff.includes(query) || stat.includes(query) || dStr.includes(query);
+                });
+            }
+
+            // Pagination bounds safety lock
+            const maxPage = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
+            if (pages.req > maxPage) pages.req = maxPage;
+            if (pages.req < 1) pages.req = 1;
+
+            const start = (pages.req - 1) * ITEMS_PER_PAGE;
+            const paginated = filtered.slice(start, start + ITEMS_PER_PAGE);
+
+            paginated.forEach(r => {
+                let dStr = 'N/A';
+                if(r.timestamp) {
+                    const d = new Date(r.timestamp.seconds * 1000);
+                    dStr = `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}/${d.getFullYear().toString().slice(-2)}`;
+                }
+                
+                let actBtn = r.status === 'Pending' ? `<button class="btn btn-sm btn-success" onclick="approveRequest('${r.id}', '${r.itemName}', ${r.quantity})"><i class="fas fa-check"></i> Approve</button>` : '-';
+
+                tbody.innerHTML += `<tr>
+                    <td>${dStr}</td><td>${r.itemName}</td><td>${r.kitchen_staff}</td>
+                    <td>${r.quantity} ${r.unit}</td>
+                    <td><span class="badge ${r.status === 'Approved' ? 'bg-green' : 'bg-yellow'}">${r.status || 'Pending'}</span></td>
+                    <td>${actBtn}</td>
+                </tr>`;
+            });
+            document.getElementById('req-page').innerText = `Page ${pages.req} of ${maxPage}`;
+        };
+
+        window.approveRequest = async (id, itemName, qty) => {
+            if(confirm(`Approve request and add ${qty} to ${itemName} inventory stock?`)) {
+                await updateDoc(doc(db, "requests", id), { status: "Approved" });
+                await updateDoc(doc(db, "ingredients", itemName), { stock_level: increment(qty) });
+            }
+        };
+
+        // FIXED PAGINATION FUNCTION
+        window.changePage = (section, dir) => {
+            pages[section] += dir;
+            if (pages[section] < 1) pages[section] = 1;
+            
+            if (section === 'fin') renderFinancials(document.getElementById('searchFinancials').value);
+            if (section === 'req') renderRequests(document.getElementById('searchRequests').value);
+        };
+
+        // --- INVENTORY ---
+        window.renderInventory = (query = '') => {
+            query = query.toLowerCase();
+            const cat = document.getElementById('invCatFilter').value;
+            const tbody = document.querySelector('#inventoryTable tbody');
+            tbody.innerHTML = '';
+            
+            let filtered = window.allIngredients;
+            if(cat !== 'All') filtered = filtered.filter(i => i.category === cat);
+            if(query) filtered = filtered.filter(i => i.name.toLowerCase().includes(query));
+
+            filtered.forEach(i => {
+                let sLvl = parseFloat(i.stock_level || 0);
+                let badgeClass = 'bg-green'; let statText = 'Available';
+                
+                if(sLvl <= 0) { badgeClass = 'bg-red'; statText = 'Out of Stock'; }
+                else if ((i.unit === 'Pieces' && sLvl <= 15) || (i.unit !== 'Pieces' && sLvl <= 2000)) { badgeClass = 'bg-yellow'; statText = 'Low Stock'; }
+
+                tbody.innerHTML += `<tr>
+                    <td><span class="badge ${badgeClass}">${statText}</span></td>
+                    <td>${i.name}</td><td>${i.category}</td><td>${sLvl}</td><td>${i.unit}</td>
+                    <td><button class=\"btn btn-sm btn-danger\" onclick=\"deleteDocItem('ingredients','${i.id}')\">Delete</button></td>
+                </tr>`;
+            });
+        };
+
+        document.getElementById('addIngredientForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('ingName').value.trim();
+            try {
+                await setDoc(doc(db, "ingredients", name), {
+                    name: name, category: document.getElementById('ingCat').value,
+                    unit: document.getElementById('ingUnit').value, stock_level: 0
+                });
+                alert('Ingredient added to Inventory successfully!');
+                e.target.reset();
+            } catch(err) { alert(err.message); }
+        });
+
+        // --- PRODUCTS / MENU ---
+        window.renderProducts = (query = '') => {
+            query = query.toLowerCase();
+            const tbody = document.querySelector('#productsTable tbody');
+            tbody.innerHTML = '';
+            
+            let filtered = window.allProducts;
+            if(query) filtered = filtered.filter(p => p.name?.toLowerCase().includes(query));
+
+            filtered.forEach(p => {
+                const promo = p.promo_discounts ? `<span style="color:var(--primary); font-weight:bold;">${p.promo_discounts}% Off</span>` : 'None';
+                tbody.innerHTML += `<tr>
+                    <td><img src="${p.image || p.photo_url || 'logo.jpg'}" width="50" style="border-radius:5px; object-fit:cover; height:50px;"></td>
+                    <td><b>${p.name}</b></td><td>${p.category || 'Dish'}</td><td>₱${p.price}</td>
+                    <td style="font-weight:900; color:var(--primary);">${p.stock || 0}</td>
+                    <td>${promo}</td>
+                    <td><span class="badge ${p.is_available ? 'bg-green' : 'bg-red'}">${p.is_available ? 'Available' : 'Phased Out'}</span></td>
+                    <td>
+                        <div style="display:flex; gap:5px;">
+                            <button class="btn btn-sm btn-info" onclick="openEditProduct('${p.id}')">Edit</button>
+                            <button class="btn btn-sm btn-warning" onclick="toggleProduct('${p.id}', ${!p.is_available})">${p.is_available ? 'Phase Out' : 'Set Avail'}</button>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+        };
+
+        window.toggleProduct = async (id, status) => {
+            if (status === false) {
+                if (!confirm("Are you sure you want to phase out this product? This will temporarily remove its recipe so the kitchen can no longer cook it.")) {
+                    return; 
+                }
+                try {
+                    const recipeSnap = await getDoc(doc(db, "recipes", id));
+                    if (recipeSnap.exists()) {
+                        await updateDoc(doc(db, "menu_items", id), { archived_recipe: recipeSnap.data().ingredients });
+                        await deleteDoc(doc(db, "recipes", id));
+                    }
+                } catch (e) { console.error("Error removing recipe:", e); }
+            } else {
+                try {
+                    const itemSnap = await getDoc(doc(db, "menu_items", id));
+                    if(itemSnap.exists() && itemSnap.data().archived_recipe) {
+                        await setDoc(doc(db, "recipes", id), { ingredients: itemSnap.data().archived_recipe });
+                    }
+                } catch (e) { console.error("Error restoring recipe:", e); }
+            }
+            await updateDoc(doc(db, "menu_items", id), { is_available: status });
+        };
+
+        window.addEditRecipeRow = (ingName = '', qty = '') => {
+            const container = document.getElementById('editRecipeBuilder');
+            const options = window.allIngredients.map(i => {
+                const selected = (i.name === ingName) ? 'selected' : '';
+                return `<option value="${i.name}" ${selected}>${i.name} (${i.unit})</option>`;
+            }).join('');
+            
+            const row = document.createElement('div');
+            row.style = "display: flex; gap: 10px; width: 100%; align-items: center;";
+            row.innerHTML = `
+                <select class="form-control edit-ing-select" style="flex:2;" required>
+                    <option value="">Select Inventory Item</option>
+                    ${options}
+                </select>
+                <input type="number" class="form-control edit-ing-qty" placeholder="Amount (e.g. 100)" style="flex:1;" value="${qty}" required>
+                <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">X</button>
+            `;
+            container.appendChild(row);
+        };
+
+        window.openEditProduct = async (id) => {
+            const p = window.allProducts.find(x => x.id === id);
+            document.getElementById('epId').value = id;
+            document.getElementById('epName').value = p.name;
+            document.getElementById('epCat').value = p.category || 'Dish';
+            document.getElementById('epPrice').value = p.price;
+            document.getElementById('epPromo').value = p.promo_discounts || 0;
+            document.getElementById('epUrl').value = p.image || p.photo_url || '';
+            
+            document.getElementById('editRecipeBuilder').innerHTML = '';
+            try {
+                const recipeSnap = await getDoc(doc(db, "recipes", id));
+                if (recipeSnap.exists()) {
+                    const ingredients = recipeSnap.data().ingredients;
+                    for (const [ing, qty] of Object.entries(ingredients)) {
+                        window.addEditRecipeRow(ing, qty);
+                    }
+                } else if (p.archived_recipe) {
+                     for (const [ing, qty] of Object.entries(p.archived_recipe)) {
+                        window.addEditRecipeRow(ing, qty);
+                    }
+                }
+            } catch(e) { console.error(e); }
+
+            document.getElementById('editProductModal').style.display = 'flex';
+        };
+
+        document.getElementById('editProductForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('epId').value;
+            
+            const selects = document.querySelectorAll('.edit-ing-select');
+            const qtys = document.querySelectorAll('.edit-ing-qty');
+            let recipesMap = {};
+            selects.forEach((sel, idx) => { recipesMap[sel.value] = parseFloat(qtys[idx].value); });
+
+            try {
+                await updateDoc(doc(db, "menu_items", id), {
+                    name: document.getElementById('epName').value,
+                    category: document.getElementById('epCat').value,
+                    price: parseFloat(document.getElementById('epPrice').value),
+                    promo_discounts: parseFloat(document.getElementById('epPromo').value),
+                    image: document.getElementById('epUrl').value
+                });
+
+                const itemSnap = await getDoc(doc(db, "menu_items", id));
+                const itemData = itemSnap.data();
+                
+                if (Object.keys(recipesMap).length > 0) {
+                    if (itemData.is_available === false) {
+                        await updateDoc(doc(db, "menu_items", id), { archived_recipe: recipesMap });
+                    } else {
+                        await setDoc(doc(db, "recipes", id), { ingredients: recipesMap });
+                    }
+                } else {
+                    await deleteDoc(doc(db, "recipes", id));
+                    await updateDoc(doc(db, "menu_items", id), { archived_recipe: null });
+                }
+
+                alert('Menu Item Updated successfully!');
+                closeModal('editProductModal');
+            } catch(err) {
+                alert('Error updating: ' + err.message);
+            }
+        });
+
+        window.addRecipeRow = () => {
+            const container = document.getElementById('recipeBuilder');
+            const options = window.allIngredients.map(i => `<option value="${i.name}">${i.name} (${i.unit})</option>`).join('');
+            const row = document.createElement('div');
+            row.style = "display: flex; gap: 10px; width: 100%; align-items: center;";
+            row.innerHTML = `
+                <select class="form-control ing-select" style="flex:2;" required><option value="">Select Inventory Item</option>${options}</select>
+                <input type="number" class="form-control ing-qty" placeholder="Amount (e.g. 100)" style="flex:1;" required>
+                <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">X</button>
+            `;
+            container.appendChild(row);
+        };
+
+        document.getElementById('addProductForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('prodName').value;
+            if(!confirm("Proceed? This deploys instantly to POS and Kitchen.")) return;
+
+            const selects = document.querySelectorAll('#recipeBuilder .ing-select');
+            const qtys = document.querySelectorAll('#recipeBuilder .ing-qty');
+            let recipesMap = {};
+            selects.forEach((sel, idx) => { recipesMap[sel.value] = parseFloat(qtys[idx].value); });
+
+            try {
+                await setDoc(doc(db, "menu_items", name), {
+                    name: name, category: document.getElementById('prodCat').value,
+                    price: parseFloat(document.getElementById('prodPrice').value),
+                    image: document.getElementById('prodUrl').value,
+                    is_available: true, promo_discounts: 0, stock: 0
+                });
+
+                if(Object.keys(recipesMap).length > 0) {
+                    await setDoc(doc(db, "recipes", name), { ingredients: recipesMap });
+                }
+                alert("Product deployed successfully!");
+                e.target.reset(); document.getElementById('recipeBuilder').innerHTML='';
+            } catch(err) { alert(err.message); }
+        });
+
+        // --- EMPLOYEES & USERS ---
+        window.renderEmployees = (query = '') => {
+            query = query.toLowerCase();
+            const tbody = document.querySelector('#employeeTable tbody');
+            tbody.innerHTML = '';
+            
+            let filtered = window.allUsers.filter(u => u.status !== 'archived' && u.role !== 'admin');
+            if(query) filtered = filtered.filter(u => u.name?.toLowerCase().includes(query) || u.role?.toLowerCase().includes(query));
+
+            filtered.forEach(u => {
+                const d = u.date_added ? new Date(u.date_added.seconds * 1000).toLocaleDateString() : 'N/A';
+                tbody.innerHTML += `<tr>
+                    <td>${u.name}</td><td>${u.role}</td><td>${u.email}</td><td>${u.contact_number}</td>
+                    <td>${u.age || '-'}</td><td>${u.gender || '-'}</td><td>${u.address || '-'}</td><td>${d}</td>
+                    <td>
+                        <div style="display:flex; gap:5px;">
+                            <button class="btn btn-sm btn-info" onclick="openEditEmployee('${u.id}')">Edit</button>
+                            <button class="btn btn-sm btn-warning" onclick="archiveUser('${u.id}', '${u.name}')">Archive</button>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+        };
+
+        window.archiveUser = async (id, name) => {
+            if(confirm(`Are you sure you want to disable staff: ${name}? They will be moved to Archive and cannot log in.`)) {
+                await updateDoc(doc(db, "users", id), { status: 'archived', date_archived: serverTimestamp() });
+            }
+        };
+
+        window.openEditEmployee = (id) => {
+            const emp = window.allUsers.find(u => u.id === id);
+            document.getElementById('editEmpId').value = id;
+            document.getElementById('editEmpName').value = emp.name;
+            document.getElementById('editEmpRole').value = emp.role;
+            document.getElementById('editEmpContact').value = emp.contact_number;
+            document.getElementById('editEmpAge').value = emp.age;
+            document.getElementById('editEmpAddress').value = emp.address;
+            document.getElementById('editEmployeeModal').style.display = 'flex';
+        };
+
+        document.getElementById('editEmployeeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editEmpId').value;
+            await updateDoc(doc(db, "users", id), {
+                name: document.getElementById('editEmpName').value,
+                role: document.getElementById('editEmpRole').value,
+                contact_number: document.getElementById('editEmpContact').value,
+                age: parseInt(document.getElementById('editEmpAge').value),
+                address: document.getElementById('editEmpAddress').value
+            });
+            alert('Employee Details Updated!');
+            closeModal('editEmployeeModal');
+        });
+
+        // EYE ICON LOGIC
+        window.togglePasswordVisibility = () => {
+            const passField = document.getElementById('nuPass');
+            const icon = document.getElementById('toggleNuPass');
+            if (passField.type === "password") {
+                passField.type = "text";
+                icon.classList.remove("fa-eye");
+                icon.classList.add("fa-eye-slash");
+            } else {
+                passField.type = "password";
+                icon.classList.remove("fa-eye-slash");
+                icon.classList.add("fa-eye");
+            }
+        };
+
+        document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('addUserMsg');
+            msg.innerText = "Creating account..."; msg.style.color = "blue";
+            try {
+                const email = document.getElementById('nuEmail').value;
+                const pass = document.getElementById('nuPass').value;
+                const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pass);
+                
+                await setDoc(doc(db, "users", cred.user.uid), {
+                    name: document.getElementById('nuName').value, email: email,
+                    contact_number: document.getElementById('nuContact').value,
+                    age: parseInt(document.getElementById('nuAge').value),
+                    gender: document.getElementById('nuGender').value,
+                    address: document.getElementById('nuAddress').value,
+                    role: document.getElementById('nuRole').value,
+                    status: 'active', date_added: serverTimestamp()
+                });
+                
+                await signOut(secondaryAuth);
+                msg.innerText = "Account Created Successfully! Fields have been cleared."; msg.style.color = "green";
+                e.target.reset();
+            } catch(err) { msg.innerText = err.message; msg.style.color = "red"; }
+        });
+
+        // --- ARCHIVE ---
+        window.renderArchive = (query = '') => {
+            query = query.toLowerCase();
+            const tbody = document.querySelector('#archiveTable tbody');
+            tbody.innerHTML = '';
+            
+            let archived = window.allUsers.filter(u => u.status === 'archived');
+            if(query) archived = archived.filter(u => u.name?.toLowerCase().includes(query) || u.role?.toLowerCase().includes(query));
+
+            archived.forEach(u => {
+                const d = u.date_archived ? new Date(u.date_archived.seconds * 1000).toLocaleDateString() : 'N/A';
+                tbody.innerHTML += `<tr>
+                    <td>${u.name}</td><td>${u.role}</td><td>${d}</td>
+                    <td>
+                        <button class="btn btn-sm btn-success" onclick="restoreUser('${u.id}')">Restore Access</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteDocItem('users','${u.id}')">Perm. Delete</button>
+                    </td>
+                </tr>`;
+            });
+        };
+
+        window.restoreUser = async (id) => { await updateDoc(doc(db, "users", id), { status: 'active', date_archived: null }); };
+        window.deleteDocItem = async (collectionName, id) => { if(confirm("Permanently delete this? Cannot be undone.")) await deleteDoc(doc(db, collectionName, id)); };
+        window.closeModal = (id) => { document.getElementById(id).style.display = 'none'; };
+        window.logout = async () => { await signOut(auth); window.location.href = "login.html"; };
+    </script>
+</body>
+</html>
