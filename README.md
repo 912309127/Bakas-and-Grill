@@ -32,7 +32,7 @@ The **Bakas & Grill Integrated System** solves these issues through a **3-Tier R
 ### 3-Tier Architecture
 * **Presentation Layer:**
   * **Web (Admin & Cashier Terminals):** HTML5, CSS3, Vanilla JavaScript (`admin.html`, `cashier.html`, `login.html`)
-  * **Mobile App (Kitchen Hub):** Flutter / Dart (`kitchen.dart`)
+  * **Mobile App (Kitchen & Mobile Terminals):** Flutter / Dart (`kitchen.dart`, `cashier.dart`, `admin.dart`, `log-in.dart`)
 * **Application Layer:** Firebase Client SDKs handling real-time data synchronization, authentication routing, and recipe deduction logic[span_12](start_span)[span_12](end_span).
 * **Data Layer:** Cloud Firestore (Centralized NoSQL Database)[span_13](start_span)[span_13](end_span).
 
@@ -43,9 +43,9 @@ Bakas-and-Grill/
 ├── login.html             # Web authentication page & role-based access router
 ├── admin.html             # Web dashboard, analytics, inventory, menu & recipe management
 ├── cashier.html           # Web POS checkout register & real-time order tracking
-└── Bakas-and-Grill/       # Flutter Mobile Application directory (Kitchen Hub)
+└── Bakas-and-Grill/       # Flutter Mobile Application directory
     └── lib/
         ├── kitchen.dart   # Mobile app interface for kitchen stock monitoring & requests
-        ├── cashier.dart
-        ├── admin.dart
-        └── log-in.dart
+        ├── cashier.dart   # Mobile POS cashier terminal module
+        ├── admin.dart     # Mobile admin management module
+        └── log-in.dart    # Mobile authentication & login view
